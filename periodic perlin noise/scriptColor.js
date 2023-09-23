@@ -1,12 +1,12 @@
+let canvas = document.getElementById('canvas');
+let ctx = canvas.getContext('2d');
+
 let perlin = new Perlin();
 perlin.seed();
 
-let canvas = document.getElementById('canvas');
-let ctx = canvas.getContext('2d');
 let w = 256;
 canvas.width = canvas.height = w;
-let gridSize = 4 //10;
-let resolution = 256;
+let numOfPoints = 5;
 
 const colorStops = [
     { value: 0.0, color: { r: 0, g: 0, b: 0 } },
@@ -31,27 +31,31 @@ function getColorFromValue(value) {
             upperStop = colorStops[i + 1];
         }
     }
-
     // Interpolate between the two color stops based on the noise value.
     const t = (value - lowerStop.value) / (upperStop.value - lowerStop.value);
-    const r = Math.round(lowerStop.color.r + t * (upperStop.color.r - lowerStop.color.r));
-    const g = Math.round(lowerStop.color.g + t * (upperStop.color.g - lowerStop.color.g));
-    const b = Math.round(lowerStop.color.b + t * (upperStop.color.b - lowerStop.color.b));
 
-    return `rgb(${r},${g},${b})`;
+    return [Math.round(lowerStop.color.r + t * (upperStop.color.r - lowerStop.color.r)),
+    Math.round(lowerStop.color.g + t * (upperStop.color.g - lowerStop.color.g)),
+    Math.round(lowerStop.color.b + t * (upperStop.color.b - lowerStop.color.b))]
+}
+
+function createPerlinTexture() {
+    let imageData = ctx.createImageData(w, w);
+    for (let y = 0; y < w; y++) {
+        for (let x = 0; x < w; x++) {
+            let index = (y * w + x) * 4;
+            let val = getColorFromValue(perlin.get(x * numOfPoints / w, y * numOfPoints / w, numOfPoints) / 2 + 0.5)
+            imageData.data[index] = val[0];
+            imageData.data[index + 1] = val[1];
+            imageData.data[index + 2] = val[2];
+            imageData.data[index + 3] = 255;
+        }
+    }
+    return imageData;
 }
 
 function render() {
-    let pixSize = w / resolution;
-    ctx.clearRect(0, 0, canvas.width, canvas.width);
-
-    for (let y = 0; y < gridSize; y += gridSize / resolution) {
-        for (let x = 0; x < gridSize; x += gridSize / resolution) {
-            let noiseValue = (perlin.get(x, y, gridSize) / 2 + 0.5);
-            ctx.fillStyle = getColorFromValue(noiseValue);
-            ctx.fillRect(x * (w / gridSize), y * (w / gridSize), pixSize, pixSize);
-        }
-    }
+    let imageData = createPerlinTexture();
+    ctx.putImageData(imageData, 0, 0);
 }
-
 render();
